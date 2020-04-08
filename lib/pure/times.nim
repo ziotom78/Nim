@@ -192,6 +192,7 @@
   * `monotimes module <monotimes.html>`_
 ]##
 
+{.push raises: [].}
 import strutils, math, options
 
 import std/private/since
@@ -1514,7 +1515,7 @@ proc `$`*(f: TimeFormat): string =
     doAssert $f == "yyyy-MM-dd"
   f.formatStr
 
-proc raiseParseException(f: TimeFormat, input: string, msg: string) =
+proc raiseParseException(f: TimeFormat, input: string, msg: string) {.raises: TimeParseError.} =
   raise newException(TimeParseError,
                      "Failed to parse '" & input & "' with format '" & $f &
                      "'. " & msg)
@@ -1544,7 +1545,8 @@ proc parseInt(s: string, b: var int, start = 0, maxLen = int.high,
     b = b * sign
     result = i - start
 
-iterator tokens(f: string): tuple[kind: FormatTokenKind, token: string] =
+iterator tokens(f: string): tuple[kind: FormatTokenKind, token: string] {.
+    raises: TimeFormatParseError.}=
   var i = 0
   var currToken = ""
 
@@ -1589,7 +1591,7 @@ iterator tokens(f: string): tuple[kind: FormatTokenKind, token: string] =
 
   yieldCurrToken()
 
-proc stringToPattern(str: string): FormatPattern =
+proc stringToPattern(str: string): FormatPattern {.raises: TimeFormatParseError.} =
   case str
   of "d": result = d
   of "dd": result = dd
@@ -1625,7 +1627,7 @@ proc stringToPattern(str: string): FormatPattern =
   else: raise newException(TimeFormatParseError,
                            "'" & str & "' is not a valid pattern")
 
-proc initTimeFormat*(format: string): TimeFormat =
+proc initTimeFormat*(format: string): TimeFormat {.raises: TimeFormatParseError.} =
   ## Construct a new time format for parsing & formatting time types.
   ##
   ## See `Parsing and formatting dates`_ for documentation of the
@@ -1754,7 +1756,7 @@ proc formatPattern(dt: DateTime, pattern: FormatPattern, result: var string,
   of Lit: assert false # Can't happen
 
 proc parsePattern(input: string, pattern: FormatPattern, i: var int,
-                  parsed: var ParsedTime, loc: DateTimeLocale): bool =
+    parsed: var ParsedTime, loc: DateTimeLocale): bool {.raises: AssertionError.} =
   template takeInt(allowedWidth: Slice[int], allowSign = false): int =
     var sv = 0
     var pd = parseInt(input, sv, i, allowedWidth.b, allowSign)
@@ -1927,7 +1929,7 @@ proc parsePattern(input: string, pattern: FormatPattern, i: var int,
   of Lit: doAssert false, "Can't happen"
 
 proc toDateTime(p: ParsedTime, zone: Timezone, f: TimeFormat,
-                input: string): DateTime =
+                input: string): DateTime {.raises: [TimeParseError, UnpackError].} =
   var year = p.year.get(0)
   var month = p.month.get(1).Month
   var monthday = p.monthday.get(1)
@@ -2014,12 +2016,13 @@ proc format*(dt: DateTime, f: string, loc: DateTimeLocale = DefaultLocale): stri
   let dtFormat = initTimeFormat(f)
   result = dt.format(dtFormat, loc)
 
-proc format*(dt: DateTime, f: static[string]): string {.raises: [].} =
+proc format*(dt: DateTime, f: static[string]): string {.raises: TimeFormatParseError.} =
   ## Overload that validates ``format`` at compile time.
   const f2 = initTimeFormat(f)
   result = dt.format(f2)
 
-proc formatValue*(result: var string; value: DateTime, specifier: string) =
+proc formatValue*(result: var string; value: DateTime, specifier: string) {.
+  raises: TimeFormatParseError.} =
   ## adapter for strformat. Not intended to be called directly.
   result.add format(value,
     if specifier.len == 0: "yyyy-MM-dd'T'HH:mm:sszzz" else: specifier)
@@ -2130,7 +2133,7 @@ proc parseTime*(input: string, f: static[string], zone: Timezone): Time
   const f2 = initTimeFormat(f)
   result = input.parse(f2, zone).toTime()
 
-proc `$`*(dt: DateTime): string {.tags: [], raises: [], benign.} =
+proc `$`*(dt: DateTime): string {.tags: [], raises: [TimeFormatParseError], benign.} =
   ## Converts a `DateTime` object to a string representation.
   ## It uses the format ``yyyy-MM-dd'T'HH:mm:sszzz``.
   runnableExamples:
@@ -2142,7 +2145,7 @@ proc `$`*(dt: DateTime): string {.tags: [], raises: [], benign.} =
   else:
     result = format(dt, "yyyy-MM-dd'T'HH:mm:sszzz")
 
-proc `$`*(time: Time): string {.tags: [], raises: [], benign.} =
+proc `$`*(time: Time): string {.tags: [], raises: [TimeFormatParseError], benign.} =
   ## Converts a `Time` value to a string representation. It will use the local
   ## time zone and use the format ``yyyy-MM-dd'T'HH:mm:sszzz``.
   runnableExamples:
