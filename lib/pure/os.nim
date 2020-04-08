@@ -41,6 +41,7 @@
 ## * `dynlib module <dynlib.html>`_
 ## * `streams module <streams.html>`_
 
+{.push raises: [].}
 include "system/inclrtl"
 import std/private/since
 
@@ -107,7 +108,7 @@ type
 
 include "includes/osseps"
 
-proc absolutePathInternal(path: string): string {.gcsafe.}
+proc absolutePathInternal(path: string): string {.gcsafe, raises: [ValueError, OSError].}
 
 proc normalizePathEnd(path: var string, trailingSep = false) =
   ## Ensures ``path`` has exactly 0 or 1 trailing `DirSep`, depending on
@@ -376,7 +377,7 @@ when doslikeFileSystem:
           return false
 
 proc relativePath*(path, base: string, sep = DirSep): string {.
-  rtl, extern: "nos$1".} =
+  rtl, extern: "nos$1", raises: [ValueError, OSError].} =
   ## Converts `path` to a path relative to `base`.
   ##
   ## The `sep` (default: `DirSep <#DirSep>`_) is used for the path normalizations,
@@ -464,7 +465,7 @@ proc relativePath*(path, base: string, sep = DirSep): string {.
   when not defined(nimOldRelativePathBehavior):
     if result.len == 0: result.add "."
 
-proc isRelativeTo*(path: string, base: string): bool {.since: (1, 1).} =
+proc isRelativeTo*(path: string, base: string): bool {.since: (1, 1), raises: [ValueError, OSError].} =
   ## Returns true if `path` is relative to `base`.
   runnableExamples:
     doAssert isRelativeTo("./foo//bar", "foo")
@@ -1178,7 +1179,8 @@ const
 
 proc findExe*(exe: string, followSymlinks: bool = true;
               extensions: openArray[string]=ExeExts): string {.
-  tags: [ReadDirEffect, ReadEnvEffect, ReadIOEffect], noNimJs.} =
+  tags: [ReadDirEffect, ReadEnvEffect, ReadIOEffect],
+  noNimJs, raises: OSError .} =
   ## Searches for `exe` in the current working directory and then
   ## in directories listed in the ``PATH`` environment variable.
   ##
@@ -1234,7 +1236,8 @@ when weirdTarget:
   const times = "fake const"
   template Time(x: untyped): untyped = string
 
-proc getLastModificationTime*(file: string): times.Time {.rtl, extern: "nos$1", noWeirdTarget.} =
+proc getLastModificationTime*(file: string): times.Time {.rtl,
+  extern: "nos$1", noWeirdTarget, raises: OSError.} =
   ## Returns the `file`'s last modification time.
   ##
   ## See also:
@@ -1252,7 +1255,8 @@ proc getLastModificationTime*(file: string): times.Time {.rtl, extern: "nos$1", 
     result = fromWinTime(rdFileTime(f.ftLastWriteTime))
     findClose(h)
 
-proc getLastAccessTime*(file: string): times.Time {.rtl, extern: "nos$1", noWeirdTarget.} =
+proc getLastAccessTime*(file: string): times.Time {.rtl,
+  extern: "nos$1", noWeirdTarget, raises: OSError.} =
   ## Returns the `file`'s last read or write access time.
   ##
   ## See also:
@@ -1270,7 +1274,8 @@ proc getLastAccessTime*(file: string): times.Time {.rtl, extern: "nos$1", noWeir
     result = fromWinTime(rdFileTime(f.ftLastAccessTime))
     findClose(h)
 
-proc getCreationTime*(file: string): times.Time {.rtl, extern: "nos$1", noWeirdTarget.} =
+proc getCreationTime*(file: string): times.Time {.rtl,
+  extern: "nos$1", noWeirdTarget, raises: OSError.} =
   ## Returns the `file`'s creation time.
   ##
   ## **Note:** Under POSIX OS's, the returned time may actually be the time at
@@ -1292,7 +1297,8 @@ proc getCreationTime*(file: string): times.Time {.rtl, extern: "nos$1", noWeirdT
     result = fromWinTime(rdFileTime(f.ftCreationTime))
     findClose(h)
 
-proc fileNewer*(a, b: string): bool {.rtl, extern: "nos$1", noWeirdTarget.} =
+proc fileNewer*(a, b: string): bool {.rtl,
+  extern: "nos$1", noWeirdTarget, raises: OSError.} =
   ## Returns true if the file `a` is newer than file `b`, i.e. if `a`'s
   ## modification time is later than `b`'s.
   ##
@@ -1310,7 +1316,8 @@ proc fileNewer*(a, b: string): bool {.rtl, extern: "nos$1", noWeirdTarget.} =
     result = getLastModificationTime(a) > getLastModificationTime(b)
 
 when not defined(nimscript):
-  proc getCurrentDir*(): string {.rtl, extern: "nos$1", tags: [].} =
+  proc getCurrentDir*(): string {.rtl, extern: "nos$1",
+                                 tags: [], raises: OSError.} =
     ## Returns the `current working directory`:idx: i.e. where the built
     ## binary is run.
     ##
@@ -1371,7 +1378,8 @@ when not defined(nimscript):
           else:
             raiseOSError(osLastError())
 
-proc setCurrentDir*(newDir: string) {.inline, tags: [], noWeirdTarget.} =
+proc setCurrentDir*(newDir: string) {.inline, tags: [],
+                                     noWeirdTarget, raises: OSError.} =
   ## Sets the `current working directory`:idx:; `OSError`
   ## is raised if `newDir` cannot been set.
   ##
@@ -1390,7 +1398,7 @@ proc setCurrentDir*(newDir: string) {.inline, tags: [], noWeirdTarget.} =
     if chdir(newDir) != 0'i32: raiseOSError(osLastError(), newDir)
 
 
-proc absolutePath*(path: string, root = getCurrentDir()): string =
+proc absolutePath*(path: string, root = getCurrentDir()): string {.raises: ValueError.} =
   ## Returns the absolute path of `path`, rooted at `root` (which must be absolute;
   ## default: current directory).
   ## If `path` is absolute, return it, ignoring `root`.
@@ -1505,7 +1513,7 @@ when defined(Windows) and not weirdTarget:
         )
 
 proc sameFile*(path1, path2: string): bool {.rtl, extern: "nos$1",
-  tags: [ReadDirEffect], noWeirdTarget.} =
+  tags: [ReadDirEffect], noWeirdTarget, raises: OSError.} =
   ## Returns true if both pathname arguments refer to the same physical
   ## file or directory.
   ##
@@ -1550,7 +1558,7 @@ proc sameFile*(path1, path2: string): bool {.rtl, extern: "nos$1",
       result = a.st_dev == b.st_dev and a.st_ino == b.st_ino
 
 proc sameFileContent*(path1, path2: string): bool {.rtl, extern: "nos$1",
-  tags: [ReadIOEffect], noWeirdTarget.} =
+  tags: [ReadIOEffect], noWeirdTarget, raises: IOError.} =
   ## Returns true if both pathname arguments refer to files with identical
   ## binary content.
   ##
@@ -1601,7 +1609,7 @@ type
     fpOthersRead           ## read access for others
 
 proc getFilePermissions*(filename: string): set[FilePermission] {.
-  rtl, extern: "nos$1", tags: [ReadDirEffect], noWeirdTarget.} =
+  rtl, extern: "nos$1", tags: [ReadDirEffect], noWeirdTarget, raises: OSError.} =
   ## Retrieves file permissions for `filename`.
   ##
   ## `OSError` is raised in case of an error.
@@ -1639,7 +1647,7 @@ proc getFilePermissions*(filename: string): set[FilePermission] {.
       result = {fpUserExec..fpOthersRead}
 
 proc setFilePermissions*(filename: string, permissions: set[FilePermission]) {.
-  rtl, extern: "nos$1", tags: [WriteDirEffect], noWeirdTarget.} =
+  rtl, extern: "nos$1", tags: [WriteDirEffect], noWeirdTarget, raises: OSError.} =
   ## Sets the file permissions for `filename`.
   ##
   ## `OSError` is raised in case of an error.
@@ -1681,7 +1689,7 @@ proc setFilePermissions*(filename: string, permissions: set[FilePermission]) {.
     if res2 == - 1'i32: raiseOSError(osLastError(), $(filename, permissions))
 
 proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
-  tags: [ReadIOEffect, WriteIOEffect], noWeirdTarget.} =
+  tags: [ReadIOEffect, WriteIOEffect], noWeirdTarget, raises: [OSError, IOError].} =
   ## Copies a file from `source` to `dest`.
   ##
   ## If this fails, `OSError` is raised.
@@ -1789,7 +1797,8 @@ proc tryRemoveFile*(file: string): bool {.rtl, extern: "nos$1", tags: [WriteDirE
     if unlink(file) != 0'i32 and errno != ENOENT:
       result = false
 
-proc removeFile*(file: string) {.rtl, extern: "nos$1", tags: [WriteDirEffect], noWeirdTarget.} =
+proc removeFile*(file: string) {.rtl, extern: "nos$1", tags: [WriteDirEffect],
+                                noWeirdTarget, raises: OSError.} =
   ## Removes the `file`.
   ##
   ## If this fails, `OSError` is raised. This does not fail
@@ -1806,7 +1815,7 @@ proc removeFile*(file: string) {.rtl, extern: "nos$1", tags: [WriteDirEffect], n
   if not tryRemoveFile(file):
     raiseOSError(osLastError(), file)
 
-proc tryMoveFSObject(source, dest: string): bool {.noWeirdTarget.} =
+proc tryMoveFSObject(source, dest: string): bool {.noWeirdTarget, raises: OSError.} =
   ## Moves a file or directory from `source` to `dest`.
   ##
   ## Returns false in case of `EXDEV` error.
@@ -1830,7 +1839,8 @@ proc tryMoveFSObject(source, dest: string): bool {.noWeirdTarget.} =
   return true
 
 proc moveFile*(source, dest: string) {.rtl, extern: "nos$1",
-  tags: [ReadIOEffect, WriteIOEffect], noWeirdTarget.} =
+  tags: [ReadIOEffect, WriteIOEffect], noWeirdTarget,
+  raises: [OSError, IOError, Exception].} =
   ## Moves a file from `source` to `dest`.
   ##
   ## If this fails, `OSError` is raised.
@@ -1941,7 +1951,8 @@ template walkCommon(pattern: string, filter) =
         if filter(path):
           yield path
 
-iterator walkPattern*(pattern: string): string {.tags: [ReadDirEffect], noWeirdTarget.} =
+iterator walkPattern*(pattern: string): string {.tags: [ReadDirEffect],
+                                                noWeirdTarget, raises: OSError.} =
   ## Iterate over all the files and directories that match the `pattern`.
   ##
   ## On POSIX this uses the `glob`:idx: call.
@@ -1955,7 +1966,8 @@ iterator walkPattern*(pattern: string): string {.tags: [ReadDirEffect], noWeirdT
   ## * `walkDirRec iterator <#walkDirRec.i,string>`_
   walkCommon(pattern, defaultWalkFilter)
 
-iterator walkFiles*(pattern: string): string {.tags: [ReadDirEffect], noWeirdTarget.} =
+iterator walkFiles*(pattern: string): string {.tags: [ReadDirEffect],
+                                              noWeirdTarget, raises: OSError.} =
   ## Iterate over all the files that match the `pattern`.
   ##
   ## On POSIX this uses the `glob`:idx: call.
@@ -1969,7 +1981,8 @@ iterator walkFiles*(pattern: string): string {.tags: [ReadDirEffect], noWeirdTar
   ## * `walkDirRec iterator <#walkDirRec.i,string>`_
   walkCommon(pattern, isFile)
 
-iterator walkDirs*(pattern: string): string {.tags: [ReadDirEffect], noWeirdTarget.} =
+iterator walkDirs*(pattern: string): string {.tags: [ReadDirEffect],
+                                             noWeirdTarget, raises: OSError.} =
   ## Iterate over all the directories that match the `pattern`.
   ##
   ## On POSIX this uses the `glob`:idx: call.
@@ -1984,7 +1997,7 @@ iterator walkDirs*(pattern: string): string {.tags: [ReadDirEffect], noWeirdTarg
   walkCommon(pattern, isDir)
 
 proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
-  tags: [ReadDirEffect], noWeirdTarget.} =
+  tags: [ReadDirEffect], noWeirdTarget, raises: OSError.} =
   ## Returns the full (`absolute`:idx:) path of an existing file `filename`.
   ##
   ## Raises `OSError` in case of an error. Follows symlinks.
@@ -2067,7 +2080,7 @@ proc staticWalkDir(dir: string; relative: bool): seq[
   discard
 
 iterator walkDir*(dir: string; relative = false, checkDir = false):
-  tuple[kind: PathComponent, path: string] {.tags: [ReadDirEffect].} =
+  tuple[kind: PathComponent, path: string] {.tags: [ReadDirEffect], raises: OSError.} =
   ## Walks over the directory `dir` and yields for each directory or file in
   ## `dir`. The component type and full path for each item are returned.
   ##
@@ -2164,9 +2177,9 @@ iterator walkDir*(dir: string; relative = false, checkDir = false):
               k = getSymlinkFileKind(path)
             yield (k, y)
 
-iterator walkDirRec*(dir: string,
-                     yieldFilter = {pcFile}, followFilter = {pcDir},
-                     relative = false, checkDir = false): string {.tags: [ReadDirEffect].} =
+iterator walkDirRec*(dir: string, yieldFilter = {pcFile}, followFilter = {pcDir},
+  relative = false, checkDir = false): string {.
+  tags: [ReadDirEffect], raises: OSError.} =
   ## Recursively walks over the directory `dir` and yields for each file
   ## or directory in `dir`.
   ##
@@ -2218,7 +2231,7 @@ iterator walkDirRec*(dir: string,
       # continue iteration.
       # Future work can provide a way to customize this and do error reporting.
 
-proc rawRemoveDir(dir: string) {.noWeirdTarget.} =
+proc rawRemoveDir(dir: string) {.noWeirdTarget, raises: OSError.} =
   when defined(windows):
     when useWinUnicode:
       wrapUnary(res, removeDirectoryW, dir)
@@ -2232,7 +2245,7 @@ proc rawRemoveDir(dir: string) {.noWeirdTarget.} =
     if rmdir(dir) != 0'i32 and errno != ENOENT: raiseOSError(osLastError(), dir)
 
 proc removeDir*(dir: string, checkDir = false) {.rtl, extern: "nos$1", tags: [
-  WriteDirEffect, ReadDirEffect], benign, noWeirdTarget.} =
+  WriteDirEffect, ReadDirEffect], benign, noWeirdTarget, raises: OSError.} =
   ## Removes the directory `dir` including all subdirectories and files
   ## in `dir` (recursively).
   ##
@@ -2256,7 +2269,7 @@ proc removeDir*(dir: string, checkDir = false) {.rtl, extern: "nos$1", tags: [
       # the same files)
   rawRemoveDir(dir)
 
-proc rawCreateDir(dir: string): bool {.noWeirdTarget.} =
+proc rawCreateDir(dir: string): bool {.noWeirdTarget, raises: OSError.} =
   # Try to create one directory (not the whole path).
   # returns `true` for success, `false` if the path has previously existed
   #
@@ -2301,7 +2314,7 @@ proc rawCreateDir(dir: string): bool {.noWeirdTarget.} =
       raiseOSError(osLastError(), dir)
 
 proc existsOrCreateDir*(dir: string): bool {.rtl, extern: "nos$1",
-  tags: [WriteDirEffect, ReadDirEffect], noWeirdTarget.} =
+  tags: [WriteDirEffect, ReadDirEffect], noWeirdTarget, raises: [OSError, IOError].} =
   ## Check if a `directory`:idx: `dir` exists, and create it otherwise.
   ##
   ## Does not create parent directories (fails if parent does not exist).
@@ -2321,7 +2334,7 @@ proc existsOrCreateDir*(dir: string): bool {.rtl, extern: "nos$1",
       raise newException(IOError, "Failed to create '" & dir & "'")
 
 proc createDir*(dir: string) {.rtl, extern: "nos$1",
-  tags: [WriteDirEffect, ReadDirEffect], noWeirdTarget.} =
+  tags: [WriteDirEffect, ReadDirEffect], noWeirdTarget, raises: [OSError, IOError].} =
   ## Creates the `directory`:idx: `dir`.
   ##
   ## The directory may contain several subdirectories that do not exist yet.
@@ -2352,7 +2365,8 @@ proc createDir*(dir: string) {.rtl, extern: "nos$1",
     discard existsOrCreateDir(dir)
 
 proc copyDir*(source, dest: string) {.rtl, extern: "nos$1",
-  tags: [WriteIOEffect, ReadIOEffect], benign, noWeirdTarget.} =
+  tags: [WriteIOEffect, ReadIOEffect], benign, noWeirdTarget,
+  raises: [OSError, IOError].} =
   ## Copies a directory from `source` to `dest`.
   ##
   ## If this fails, `OSError` is raised.
@@ -2383,7 +2397,8 @@ proc copyDir*(source, dest: string) {.rtl, extern: "nos$1",
       copyDir(path, dest / noSource)
     else: discard
 
-proc moveDir*(source, dest: string) {.tags: [ReadIOEffect, WriteIOEffect], noWeirdTarget.} =
+proc moveDir*(source, dest: string) {.tags: [ReadIOEffect, WriteIOEffect],
+                                     noWeirdTarget, raises: [IOError, OSError].} =
   ## Moves a directory from `source` to `dest`.
   ##
   ## If this fails, `OSError` is raised.
@@ -2401,7 +2416,7 @@ proc moveDir*(source, dest: string) {.tags: [ReadIOEffect, WriteIOEffect], noWei
       copyDir(source, dest)
       removeDir(source)
 
-proc createSymlink*(src, dest: string) {.noWeirdTarget.} =
+proc createSymlink*(src, dest: string) {.noWeirdTarget, raises: OSError.} =
   ## Create a symbolic link at `dest` which points to the item specified
   ## by `src`. On most operating systems, will fail if a link already exists.
   ##
@@ -2429,7 +2444,7 @@ proc createSymlink*(src, dest: string) {.noWeirdTarget.} =
     if symlink(src, dest) != 0:
       raiseOSError(osLastError(), $(src, dest))
 
-proc createHardlink*(src, dest: string) {.noWeirdTarget.} =
+proc createHardlink*(src, dest: string) {.noWeirdTarget, raises: OSError.} =
   ## Create a hard link at `dest` which points to the item specified
   ## by `src`.
   ##
@@ -2452,7 +2467,7 @@ proc createHardlink*(src, dest: string) {.noWeirdTarget.} =
       raiseOSError(osLastError(), $(src, dest))
 
 proc copyFileWithPermissions*(source, dest: string,
-                              ignorePermissionErrors = true) {.noWeirdTarget.} =
+  ignorePermissionErrors = true) {.noWeirdTarget, raises: [IOError, Exception].} =
   ## Copies a file from `source` to `dest` preserving file permissions.
   ##
   ## This is a wrapper proc around `copyFile <#copyFile,string,string>`_,
@@ -2486,7 +2501,8 @@ proc copyFileWithPermissions*(source, dest: string,
 
 proc copyDirWithPermissions*(source, dest: string,
     ignorePermissionErrors = true) {.rtl, extern: "nos$1",
-    tags: [WriteIOEffect, ReadIOEffect], benign, noWeirdTarget.} =
+    tags: [WriteIOEffect, ReadIOEffect], benign, noWeirdTarget,
+    raises: [IOError, Exception].} =
   ## Copies a directory from `source` to `dest` preserving file permissions.
   ##
   ## If this fails, `OSError` is raised. This is a wrapper proc around `copyDir
@@ -2528,8 +2544,8 @@ proc copyDirWithPermissions*(source, dest: string,
     else: discard
 
 proc inclFilePermissions*(filename: string,
-                          permissions: set[FilePermission]) {.
-  rtl, extern: "nos$1", tags: [ReadDirEffect, WriteDirEffect], noWeirdTarget.} =
+  permissions: set[FilePermission]) {.rtl, extern: "nos$1",
+  tags: [ReadDirEffect, WriteDirEffect], noWeirdTarget, raises: OSError.} =
   ## A convenience proc for:
   ##
   ## .. code-block:: nim
@@ -2537,15 +2553,15 @@ proc inclFilePermissions*(filename: string,
   setFilePermissions(filename, getFilePermissions(filename)+permissions)
 
 proc exclFilePermissions*(filename: string,
-                          permissions: set[FilePermission]) {.
-  rtl, extern: "nos$1", tags: [ReadDirEffect, WriteDirEffect], noWeirdTarget.} =
+  permissions: set[FilePermission]) {.rtl, extern: "nos$1",
+  tags: [ReadDirEffect, WriteDirEffect], noWeirdTarget, raises: OSError.} =
   ## A convenience proc for:
   ##
   ## .. code-block:: nim
   ##   setFilePermissions(filename, getFilePermissions(filename)-permissions)
   setFilePermissions(filename, getFilePermissions(filename)-permissions)
 
-proc expandSymlink*(symlinkPath: string): string {.noWeirdTarget.} =
+proc expandSymlink*(symlinkPath: string): string {.noWeirdTarget, raises: OSError.} =
   ## Returns a string representing the path to which the symbolic link points.
   ##
   ## On Windows this is a noop, ``symlinkPath`` is simply returned.
@@ -2725,10 +2741,10 @@ when defined(nimdoc):
 
 elif defined(nimscript): discard
 elif defined(nintendoswitch) or weirdTarget:
-  proc paramStr*(i: int): TaintedString {.tags: [ReadIOEffect].} =
+  proc paramStr*(i: int): TaintedString {.tags: [ReadIOEffect], raises: OSError.} =
     raise newException(OSError, "paramStr is not implemented on Nintendo Switch")
 
-  proc paramCount*(): int {.tags: [ReadIOEffect].} =
+  proc paramCount*(): int {.tags: [ReadIOEffect], raises: OSError.} =
     raise newException(OSError, "paramCount is not implemented on Nintendo Switch")
 
 elif defined(windows):
@@ -2749,7 +2765,7 @@ elif defined(windows):
     result = ownArgv.len-1
 
   proc paramStr*(i: int): TaintedString {.rtl, extern: "nos$1",
-    tags: [ReadIOEffect].} =
+                                         tags: [ReadIOEffect], raises: IndexDefect.} =
     # Docstring in nimdoc block.
     if not ownParsedArgv:
       ownArgv = parseCmdLine($getCommandLine())
@@ -2758,10 +2774,10 @@ elif defined(windows):
     raise newException(IndexDefect, formatErrorIndexBound(i, ownArgv.len-1))
 
 elif defined(genode):
-  proc paramStr*(i: int): TaintedString =
+  proc paramStr*(i: int): TaintedString {.raises: OSError.} =
     raise newException(OSError, "paramStr is not implemented on Genode")
 
-  proc paramCount*(): int =
+  proc paramCount*(): int {.raises: OSError.} =
     raise newException(OSError, "paramCount is not implemented on Genode")
 
 elif not defined(createNimRtl) and
@@ -2771,7 +2787,7 @@ elif not defined(createNimRtl) and
     cmdCount {.importc: "cmdCount".}: cint
     cmdLine {.importc: "cmdLine".}: cstringArray
 
-  proc paramStr*(i: int): TaintedString {.tags: [ReadIOEffect].} =
+  proc paramStr*(i: int): TaintedString {.tags: [ReadIOEffect], raises: IndexDefect.} =
     # Docstring in nimdoc block.
     if i < cmdCount and i >= 0: return TaintedString($cmdLine[i])
     raise newException(IndexDefect, formatErrorIndexBound(i, cmdCount-1))
@@ -2781,7 +2797,7 @@ elif not defined(createNimRtl) and
     result = cmdCount-1
 
 when declared(paramCount) or defined(nimdoc):
-  proc commandLineParams*(): seq[TaintedString] =
+  proc commandLineParams*(): seq[TaintedString] {.raises: [OSError, IndexDefect].} =
     ## Convenience proc which returns the command line parameters.
     ##
     ## This returns **only** the parameters. If you want to get the application
@@ -2858,7 +2874,7 @@ when not weirdTarget and (defined(linux) or defined(solaris) or defined(bsd) or 
     setLen(result, len)
 
 when not weirdTarget and defined(openbsd):
-  proc getApplOpenBsd(): string =
+  proc getApplOpenBsd(): string {.raises: [IndexDefect, OSError].} =
     # similar to getApplHeuristic, but checks current working directory
     when declared(paramStr):
       result = ""
@@ -2892,7 +2908,7 @@ when not weirdTarget and defined(openbsd):
       result = ""
 
 when not (defined(windows) or defined(macosx) or weirdTarget):
-  proc getApplHeuristic(): string =
+  proc getApplHeuristic(): string {.raises: [OSError, IndexDefect].} =
     when declared(paramStr):
       result = string(paramStr(0))
       # POSIX guaranties that this contains the executable
@@ -2935,7 +2951,8 @@ when defined(haiku):
     else:
       result = ""
 
-proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noWeirdTarget.} =
+proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect],
+                                noWeirdTarget, raises: [OSError, IndexDefect].} =
   ## Returns the filename of the application's executable.
   ## This proc will resolve symlinks.
   ##
@@ -3001,7 +3018,8 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noW
     if result.len == 0:
       result = getApplHeuristic()
 
-proc getAppDir*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noWeirdTarget.} =
+proc getAppDir*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect],
+                           noWeirdTarget, raises: [OSError, IndexDefect].} =
   ## Returns the directory of the application's executable.
   ##
   ## See also:
@@ -3019,7 +3037,7 @@ proc sleep*(milsecs: int) {.rtl, extern: "nos$1", tags: [TimeEffect], noWeirdTar
     discard posix.nanosleep(a, b)
 
 proc getFileSize*(file: string): BiggestInt {.rtl, extern: "nos$1",
-  tags: [ReadIOEffect], noWeirdTarget.} =
+  tags: [ReadIOEffect], noWeirdTarget, raises: [OSError, IOError].} =
   ## Returns the file size of `file` (in bytes). ``OSError`` is
   ## raised in case of an error.
   when defined(windows):
@@ -3126,7 +3144,7 @@ when defined(js):
   when not declared(File):
     type File = object
 
-proc getFileInfo*(handle: FileHandle): FileInfo {.noWeirdTarget.} =
+proc getFileInfo*(handle: FileHandle): FileInfo {.noWeirdTarget, raises: OSError.} =
   ## Retrieves file information for the file object represented by the given
   ## handle.
   ##
@@ -3152,7 +3170,7 @@ proc getFileInfo*(handle: FileHandle): FileInfo {.noWeirdTarget.} =
       raiseOSError(osLastError(), $handle)
     rawToFormalFileInfo(rawInfo, "", result)
 
-proc getFileInfo*(file: File): FileInfo {.noWeirdTarget.} =
+proc getFileInfo*(file: File): FileInfo {.noWeirdTarget, raises: [OSError, IOError].} =
   ## Retrieves file information for the file object.
   ##
   ## See also:
@@ -3162,7 +3180,8 @@ proc getFileInfo*(file: File): FileInfo {.noWeirdTarget.} =
     raise newException(IOError, "File is nil")
   result = getFileInfo(file.getFileHandle())
 
-proc getFileInfo*(path: string, followSymlink = true): FileInfo {.noWeirdTarget.} =
+proc getFileInfo*(path: string, followSymlink = true): FileInfo {.
+  noWeirdTarget, raises: OSError.} =
   ## Retrieves file information for the file object pointed to by `path`.
   ##
   ## Due to intrinsic differences between operating systems, the information
@@ -3242,7 +3261,8 @@ proc getCurrentProcessId*(): int {.noWeirdTarget.} =
   else:
     result = getpid()
 
-proc setLastModificationTime*(file: string, t: times.Time) {.noWeirdTarget.} =
+proc setLastModificationTime*(file: string, t: times.Time) {.
+  noWeirdTarget, raises: OSError.} =
   ## Sets the `file`'s last modification time. `OSError` is raised in case of
   ## an error.
   when defined(posix):
@@ -3264,7 +3284,8 @@ func isValidFilename*(filename: string, maxLen = 259.Positive): bool {.since: (1
   ##
   ## This is useful if you want to copy or save files across Windows, Linux, Mac, etc.
   ## You can pass full paths as argument too, but func only checks filenames.
-  ## It uses ``invalidFilenameChars``, ``invalidFilenames`` and ``maxLen`` to verify the specified ``filename``.
+  ## It uses ``invalidFilenameChars``, ``invalidFilenames`` and ``maxLen`` to
+  ## verify the specified ``filename``.
   ##
   ## .. code-block:: nim
   ##   assert not isValidFilename(" foo")    ## Leading white space
@@ -3284,3 +3305,5 @@ func isValidFilename*(filename: string, maxLen = 259.Positive): bool {.since: (1
     find(f.name, invalidFilenameChars) != -1): return false
   for invalid in invalidFilenames:
     if cmpIgnoreCase(f.name, invalid) == 0: return false
+
+{.pop.} # {.push raises: [].}

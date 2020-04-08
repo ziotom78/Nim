@@ -153,7 +153,7 @@ proc existsEnv*(key: string): bool {.tags: [ReadEnvEffect].} =
     if c_getenv(key) != nil: return true
     else: return findEnvVar(key) >= 0
 
-proc putEnv*(key, val: string) {.tags: [WriteEnvEffect].} =
+proc putEnv*(key, val: string) {.tags: [WriteEnvEffect], raises: OSError.} =
   ## Sets the value of the `environment variable`:idx: named `key` to `val`.
   ## If an error occurs, `OSError` is raised.
   ##
@@ -187,7 +187,7 @@ proc putEnv*(key, val: string) {.tags: [WriteEnvEffect].} =
       if c_putenv(environment[indx]) != 0'i32:
         raiseOSError(osLastError())
 
-proc delEnv*(key: string) {.tags: [WriteEnvEffect].} =
+proc delEnv*(key: string) {.tags: [WriteEnvEffect], raises: OSError.} =
   ## Deletes the `environment variable`:idx: named `key`.
   ## If an error occurs, `OSError` is raised.
   ##

@@ -57,9 +57,8 @@ proc osErrorMsg*(errorCode: OSErrorCode): string =
     if errorCode != OSErrorCode(0'i32):
       result = $c_strerror(errorCode.int32)
 
-proc newOSError*(
-  errorCode: OSErrorCode, additionalInfo = ""
-): owned(ref OSError) {.noinline.} =
+proc newOSError*(errorCode: OSErrorCode,
+  additionalInfo = ""): owned(ref OSError) {.noinline, raises: OSError.} =
   ## Creates a new `OSError exception <system.html#OSError>`_.
   ##
   ## The ``errorCode`` will determine the
@@ -86,7 +85,7 @@ proc newOSError*(
     e.msg = "unknown OS error"
   return e
 
-proc raiseOSError*(errorCode: OSErrorCode, additionalInfo = "") {.noinline.} =
+proc raiseOSError*(errorCode: OSErrorCode, additionalInfo = "") {.noinline, raises: OSError.} =
   ## Raises an `OSError exception <system.html#OSError>`_.
   ##
   ## Read the description of the `newOSError proc <#newOSError,OSErrorCode,string>`_ to learn
