@@ -55,6 +55,7 @@
 #  share leaves across different rope trees.
 #  To cache them they are inserted in a `cache` array.
 
+{.push raises: [].}
 import
   hashes
 
@@ -185,11 +186,11 @@ iterator items*(r: Rope): char =
   for s in leaves(r):
     for c in items(s): yield c
 
-proc writeRope*(f: File, r: Rope) =
+proc writeRope*(f: File, r: Rope) {.raises: IOError.} =
   ## writes a rope to a file.
   for s in leaves(r): write(f, s)
 
-proc writeRope*(head: Rope, filename: AbsoluteFile): bool =
+proc writeRope*(head: Rope, filename: AbsoluteFile): bool {.raises: IOError.} =
   var f: File
   if open(f, filename.string, fmWrite):
     if head != nil: writeRope(f, head)
@@ -289,7 +290,7 @@ else:
 const
   bufSize = 1024              # 1 KB is reasonable
 
-proc equalsFile*(r: Rope, f: File): bool =
+proc equalsFile*(r: Rope, f: File): bool {.raises: IOError.} =
   ## returns true if the contents of the file `f` equal `r`.
   var
     buf: array[bufSize, char]
@@ -321,7 +322,7 @@ proc equalsFile*(r: Rope, f: File): bool =
   result = readBuffer(f, addr(buf[0]), 1) == 0 and
       btotal == rtotal # check that we've read all
 
-proc equalsFile*(r: Rope, filename: AbsoluteFile): bool =
+proc equalsFile*(r: Rope, filename: AbsoluteFile): bool {.raises: IOError.} =
   ## returns true if the contents of the file `f` equal `r`. If `f` does not
   ## exist, false is returned.
   var f: File
@@ -330,9 +331,12 @@ proc equalsFile*(r: Rope, filename: AbsoluteFile): bool =
     result = equalsFile(r, f)
     close(f)
 
-proc writeRopeIfNotEqual*(r: Rope, filename: AbsoluteFile): bool =
+proc writeRopeIfNotEqual*(r: Rope, filename: AbsoluteFile): bool {.raises: IOError.} =
   # returns true if overwritten
   if not equalsFile(r, filename):
     result = writeRope(r, filename)
   else:
     result = false
+
+
+{.pop.} # {.push raises: [].}
