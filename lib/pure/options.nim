@@ -167,7 +167,7 @@ proc isNone*[T](self: Option[T]): bool {.inline.} =
   else:
     not self.has
 
-proc get*[T](self: Option[T]): lent T {.inline.} =
+proc get*[T](self: Option[T]): lent T {.inline, raises: UnpackDefect.} =
   ## Returns contents of an `Option`. If it is `None`, then an exception is
   ## thrown.
   ##
@@ -200,7 +200,7 @@ proc get*[T](self: Option[T], otherwise: T): T {.inline.} =
   else:
     otherwise
 
-proc get*[T](self: var Option[T]): var T {.inline.} =
+proc get*[T](self: var Option[T]): var T {.inline, raises: UnpackDefect.} =
   ## Returns contents of the `var Option`. If it is `None`, then an exception
   ## is thrown.
   runnableExamples:
