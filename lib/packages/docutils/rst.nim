@@ -732,6 +732,8 @@ when false:
       if p.tok[p.idx].symbol == "_": n = parsePostfix(p, n)
       add(father, n)
 
+proc parseInline(p: var RstParser, father: PRstNode)
+
 proc parseUntil(p: var RstParser, father: PRstNode, postfix: string,
                 interpretBackslash: bool) =
   let
@@ -744,6 +746,9 @@ proc parseUntil(p: var RstParser, father: PRstNode, postfix: string,
       if isInlineMarkupEnd(p, postfix):
         inc(p.idx)
         break
+      if p.tok[p.idx].symbol in ["*", "**", "`", "``"]:
+        parseInline(p, father)
+
       elif interpretBackslash:
         parseBackslash(p, father)
       else:
