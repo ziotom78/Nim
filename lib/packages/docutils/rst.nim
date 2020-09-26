@@ -738,7 +738,7 @@ when false:
 proc parseInline(p: var RstParser, father: PRstNode)
 
 proc parseUntil(p: var RstParser, father: PRstNode, postfix: string,
-                interpretBackslash: bool) =
+                interpretBackslash: bool, isInsideCode: bool) =
   let
     line = p.tok[p.idx].line
     col = p.tok[p.idx].col
@@ -749,6 +749,9 @@ proc parseUntil(p: var RstParser, father: PRstNode, postfix: string,
       if isInlineMarkupEnd(p, postfix):
         inc(p.idx)
         break
+      elif isInsideCode:
+        add(father, newLeaf(p))
+        inc(p.idx)
       else:
         parseInline(p, father)
     of tkPunct:
@@ -834,32 +837,32 @@ proc parseInline(p: var RstParser, father: PRstNode) =
   of tkEmphasis:
     if isInlineMarkupStart(p, "***"):
       var n = newRstNode(rnTripleEmphasis)
-      parseUntil(p, n, "***", true)
+      parseUntil(p, n, "***", true, false)
       add(father, n)
     elif isInlineMarkupStart(p, "**"):
       var n = newRstNode(rnStrongEmphasis)
-      parseUntil(p, n, "**", true)
+      parseUntil(p, n, "**", true, false)
       add(father, n)
     elif isInlineMarkupStart(p, "*"):
       var n = newRstNode(rnEmphasis)
-      parseUntil(p, n, "*", true)
+      parseUntil(p, n, "*", true, false)
       add(father, n)
     elif roSupportMarkdown in p.s.options and p.tok[p.idx].symbol == "```":
       inc(p.idx)
       add(father, parseMarkdownCodeblock(p))
     elif isInlineMarkupStart(p, "``"):
       var n = newRstNode(rnInlineLiteral)
-      parseUntil(p, n, "``", false)
+      parseUntil(p, n, "``", false, true)
       add(father, n)
     elif isInlineMarkupStart(p, "`"):
       var n = newRstNode(rnInterpretedText)
-      parseUntil(p, n, "`", true)
+      parseUntil(p, n, "`", true, true)
       n = parsePostfix(p, n)
       add(father, n)
   of tkPunct:
     if isInlineMarkupStart(p, "|"):
       var n = newRstNode(rnSubstitutionReferences)
-      parseUntil(p, n, "|", false)
+      parseUntil(p, n, "|", false, false)
       add(father, n)
     elif roSupportMarkdown in p.s.options and
         p.tok[p.idx].symbol == "[" and p.tok[p.idx+1].symbol != "[" and
@@ -964,7 +967,7 @@ proc parseField(p: var RstParser): PRstNode =
   result = newRstNode(rnField)
   var col = p.tok[p.idx].col
   var fieldname = newRstNode(rnFieldName)
-  parseUntil(p, fieldname, ":", false)
+  parseUntil(p, fieldname, ":", false, false)
   var fieldbody = newRstNode(rnFieldBody)
   if p.tok[p.idx].kind != tkIndent: parseLine(p, fieldbody)
   if p.tok[p.idx].kind == tkIndent:
